@@ -1,0 +1,138 @@
+================================================================================
+  CARLA LANE KEEPING ASSIST DISSERTATION — FINAL RESULTS NOTES
+  Date: 2026-05-02
+================================================================================
+
+PROJECT OVERVIEW
+----------------
+This project compares four baseline path/lane tracking controllers against
+AI/LLM-supervised versions of each, implemented in CARLA 0.9.15.
+
+Baseline controllers:     Pure Pursuit, Stanley, PID, MPC
+AI-supervised controllers: AI Pure Pursuit, AI Stanley, AI PID, AI MPC
+
+The AI-supervised modes use a live Ollama LLM (llama3.2:1b, GPU-first) running
+in a background daemon thread during the simulation. The LLM receives a
+natural-language user request and returns bounded adjustments to high-level
+controller parameters (e.g. lookahead distance, gain values, target speed).
+The LLM never outputs a steering command directly — all steering is computed
+by the deterministic controller from live vehicle state and route data.
+
+--------------------------------------------------------------------------------
+SIMULATION SETTINGS (all 8 runs, identical)
+--------------------------------------------------------------------------------
+  Simulator        : CARLA 0.9.15 (Windows, -RenderOffScreen -quality-level=Low)
+  Map              : Town10HD_Opt
+  Ego vehicle      : vehicle.tesla.model3  (Tesla Model 3, wheelbase 2.875 m)
+  Spawn point      : spawn_points[0]  (first available spawn point, consistent)
+  Control rate     : 20 Hz  (fixed_delta_seconds = 0.05 s, synchronous mode)
+  Run duration     : 120.0 s
+  Expected rows    : 2400  (120 s / 0.05 s)
+  Route distance   : approximately 700 m
+  Route spacing    : 2.0 m  (waypoint interval along the road graph)
+  Target speed     : 15.0 km/h  (proportional throttle controller)
+
+--------------------------------------------------------------------------------
+ACCEPTED FINAL RUNS
+--------------------------------------------------------------------------------
+
+  #  Controller       Type           CSV Filename                           Rows
+  -- ---------------- -------------- -------------------------------------- ----
+  1  Pure Pursuit      Baseline       pure_pursuit_20260502_204909.csv      2400
+  2  Stanley           Baseline       stanley_20260502_205201.csv           2400
+  3  PID               Baseline       pid_20260502_205447.csv               2400
+  4  MPC               Baseline       mpc_20260502_205728.csv               2400
+  5  AI Pure Pursuit   AI-supervised  ai_pure_pursuit_20260502_224454.csv   2400
+  6  AI Stanley        AI-supervised  ai_stanley_20260502_223729.csv        2400
+  7  AI PID            AI-supervised  ai_pid_20260502_225233.csv            2400
+  8  AI MPC            AI-supervised  ai_mpc_20260502_225546.csv            2400
+
+  All runs: t = 0.0 s to t = 119.95 s, no missing rows, no restarts.
+
+--------------------------------------------------------------------------------
+CONTROLLER CONFIGURATIONS
+--------------------------------------------------------------------------------
+
+  Pure Pursuit
+    Lookahead base: 6.0 m, lookahead gain: 0.5, max steer: 0.7 rad
+
+  Stanley
+    k = 1.0, softening speed = 1.0 m/s, max steer: 0.7 rad
+    (physical saturation on final steering angle, not angle wrapping)
+
+  PID (lateral)
+    Kp_cte = 0.25, Ki_cte = 0.00, Kd_cte = 0.10, K_heading = 0.80
+    Integral limit = 5.0, max steer: 0.7 rad
+    (physical saturation on final steering angle, not angle wrapping)
+
+  MPC (sampled kinematic predictive)
+    Horizon = 10 steps, dt = 0.10 s, max steer: 0.7 rad
+    q_lateral = 1.0, q_heading = 0.5, r_steer = 0.1, r_steer_change = 0.2
+
+  AI-supervised modes
+    LLM model : llama3.2:1b (Ollama, GPU-first)
+    Fallback  : llama3.2-3b-cpu (CPU, if GPU model fails)
+    Mechanism : LiveLLMSupervisor — background daemon thread watches
+                user_request.txt. CARLA control loop is never blocked.
+                LLM adjusts bounded high-level parameters only.
+                steer_cmd is always produced by the deterministic controller.
+    Initial request (seeded identically for all 4 AI runs):
+                "Improve tracking accuracy around bends while avoiding
+                 harsh steering corrections."
+
+--------------------------------------------------------------------------------
+KEY METRICS (from results/final_plots/final_comparison_table.csv)
+--------------------------------------------------------------------------------
+
+  Controller       Type           RMS Lat (m)  Mean Lat (m)  RMS Head (deg)  Mean Speed (km/h)
+  ---------------- -------------- -----------  ------------  --------------  -----------------
+  Pure Pursuit      Baseline          0.5592       0.3963         2.538           12.12
+  Stanley           Baseline          0.3627       0.2584         1.993           12.11
+  PID               Baseline          0.0999       0.0665         2.202           12.11
+  MPC               Baseline          0.1248       0.0884         1.979           12.11
+  AI Pure Pursuit   AI-supervised     0.5604       0.3775         2.706            9.63  [*]
+  AI Stanley        AI-supervised     0.3483       0.2364         2.335            7.98  [*]
+  AI PID            AI-supervised     0.0999       0.0665         2.203           12.11
+  AI MPC            AI-supervised     0.1328       0.0927         1.890           14.49
+
+--------------------------------------------------------------------------------
+IMPORTANT CAVEATS
+--------------------------------------------------------------------------------
+
+  [*] SPEED CONFOUND — AI Pure Pursuit and AI Stanley
+      The LLM supervisor significantly reduced target_speed_kmh for these two
+      controllers during their runs:
+        AI Pure Pursuit: mean 9.63 km/h  vs baseline 12.12 km/h
+        AI Stanley:      mean 7.98 km/h  vs baseline 12.11 km/h
+      Lower speeds reduce lateral error because steering corrections have more
+      time to act. Direct numerical comparison of lateral error for these pairs
+      is confounded by speed and should be discussed carefully in the report.
+
+  BASELINE SPEED
+      All four baseline controllers targeted 15.0 km/h but achieved a mean of
+      approximately 12.1 km/h. This is expected behaviour of the proportional
+      throttle controller (Kp = 0.25, max_throttle = 0.45) in the road geometry
+      of Town10HD_Opt.
+
+  PID vs AI PID
+      RMS lateral error is near-identical (0.0999 m both). The LLM produced
+      conservative parameter changes that maintained safe performance without
+      meaningful numerical improvement. This is a valid research finding.
+
+  MPC vs AI MPC
+      AI MPC shows a small increase in lateral error (0.1328 vs 0.1248 m RMS)
+      but lower heading error RMS (1.890 vs 1.979 deg). The LLM traded a minor
+      increase in cross-track offset for a smoother heading profile, consistent
+      with the seeded user request.
+
+--------------------------------------------------------------------------------
+FILES
+--------------------------------------------------------------------------------
+  Final CSVs  : results/final_logs/    (8 files, read-only reference copies)
+  Final plots : results/final_plots/   (40 PNG files + final_comparison_table.csv)
+  Source CSVs : results/logs/          (originals, do not modify)
+  Source plots: results/plots/         (regenerated by plot_results.py --all)
+  Archive     : results/logs_archive/  (29 development/invalid runs — preserved)
+                results/plots_archive/ (10 old plot files — preserved)
+
+================================================================================

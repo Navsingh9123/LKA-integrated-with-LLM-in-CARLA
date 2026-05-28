@@ -1,0 +1,8 @@
+{
+  "target_speed_kmh": 18.0,
+  "q_lateral": 3.5,
+  "q_heading": 1.2,
+  "r_steer": 0.25,
+  "r_steer_change": 1.0,
+  "reason": ""
+}

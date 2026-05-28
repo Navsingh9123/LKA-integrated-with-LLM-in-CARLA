@@ -1,0 +1,9 @@
+Controller,Type,RMS Lateral Error (m),Mean Absolute Lateral Error (m),Maximum Absolute Lateral Error (m),RMS Heading Error (deg),Mean Absolute Heading Error (deg),Mean Absolute Steering Command,Maximum Absolute Steering Command,Mean Speed (km/h),Maximum Speed (km/h),Duration (s)
+Pure Pursuit,Baseline,0.5592,0.3963,1.6182,2.5380,1.5085,0.0433,0.2429,12.1162,12.2455,119.95
+Stanley,Baseline,0.3627,0.2584,1.0520,1.9928,1.2750,0.0451,0.3129,12.1117,12.2480,119.95
+PID,Baseline,0.0999,0.0665,0.3293,2.2023,1.2945,0.0440,0.3371,12.1105,12.2481,119.95
+MPC,Baseline,0.1248,0.0884,0.3954,1.9795,1.2484,0.0432,0.2143,12.1081,12.2767,119.95
+AI Pure Pursuit,AI-supervised,0.5604,0.3775,1.5510,2.7056,1.5611,0.0429,0.2457,9.6282,12.2413,119.95
+AI Stanley,AI-supervised,0.3483,0.2364,0.8897,2.3346,1.4591,0.0479,0.3138,7.9826,12.2397,119.95
+AI PID,AI-supervised,0.0999,0.0665,0.3295,2.2026,1.2947,0.0440,0.3369,12.1105,12.2481,119.95
+AI MPC,AI-supervised,0.1328,0.0927,0.4446,1.8899,1.1131,0.0382,0.2143,14.4860,14.8460,119.95
